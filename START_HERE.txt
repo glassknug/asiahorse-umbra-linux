@@ -22,3 +22,10 @@ For full installation steps, limitations and credits, see README.md.
 
 Desktop GUI and effects contributed by glassknug.
 Original driver and protocol credits are preserved in README.md and LICENSE.
+
+Fan curves tab (experimental):
+Choose a CPU temperature sensor, edit or drag curve points and press Apply curve.
+Save profile stores the curve and sensor. Ctrl+Alt+1–9 activates assigned profiles
+while the app has focus. Opening the app never activates fan control automatically.
+Stop curve / 100% and normal app exit request full duty, not the previous curve.
+Only 75% and 100% have been hardware-tested. Read the limitations in README.md.

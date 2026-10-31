@@ -1,8 +1,7 @@
 # AsiaHorse Umbra ARGB Hub — Linux Control
 
 Native Linux control for the **AsiaHorse Umbra ARGB hub** (USB `1a86:fe05`,
-enumerates as "USBFAN", QinHeng CH55x chip). AsiaHorse ships no Linux
-software and OpenRGB does not support this hub — this tool speaks its HID
+enumerates as "USBFAN", QinHeng CH55x chip). This tool speaks the hub HID
 protocol directly through `/dev/hidraw`. The CLI uses the Python 3 standard library only; the desktop GUI also requires Tk.
 
 Verified working August 2026: full-color control of 124 LEDs across 10
@@ -107,6 +106,59 @@ the app to stay open, streaming at up to approximately 20 frames/second.
 Do not run another RGB controller or a second app instance at the same time.
 No boot effects or firmware presets are modified.
 
+### Fan curves (experimental)
+
+The **Fan curves** tab adds USB motor duty control alongside RGB. Opening the
+app or loading a profile does not change fan duty; press **Apply curve** or
+**Apply manual** to take control. This sends a hub-wide duty request, not an
+individual setting per port. No motherboard PWM registers are written.
+
+- Choose a temperature sensor, preferably the CPU sensor you intend to follow.
+- Edit 2–12 `temperature:duty` points, or drag points on the curve graph. Points
+  must increase in temperature and must not decrease in duty. Press **Apply curve**.
+- Save named profiles; assigning a digit enables **Ctrl+Alt+1–9 while the app
+  has keyboard focus**. These are application shortcuts, not global desktop shortcuts.
+  Activating one immediately applies its saved curve and sensor.
+- The live graph shows sensor temperature in °C and requested fan duty in %;
+  it does **not measure actual fan RPM**. It retains the last 120 samples in memory.
+- **Apply manual** requests a fixed percentage. **Stop curve / 100%** replaces
+  the curve with a full-duty request; it does not stop the fan motors.
+
+Profiles are stored atomically in `$XDG_CONFIG_HOME/asiahorse-umbra/profiles.json`
+(default `~/.config/asiahorse-umbra/profiles.json`). Startup never automatically
+activates a saved curve. Changes to an active curve require **Apply curve**;
+changes to a saved profile require **Save profile**. Deleting a profile does
+not stop its active curve. The desktop installer preserves profiles.
+
+Curve interpolation is linear. Rising requests apply immediately; falling
+requests are limited to two percentage points per second. Missing, faulty or
+implausible selected-sensor readings request 100%. Any selected-sensor reading
+at or above 85 °C overrides the curve to 100%; this is a conservative application
+policy, not a universal hardware temperature limit. Control samples once per
+second in the USB worker independently of the GUI refresh.
+
+Normal exit attempts to request 100%, leaving software fan control enabled.
+It does **not restore the previous firmware curve or motherboard control mode**.
+A crash, forced termination, suspend or disconnected USB cannot guarantee a
+recovery command: the hub may hold its last duty. A USB error stops curve
+control and attempts a 100% request; check cooling and reconnect before applying
+again. Manual mode does not follow any temperature sensor.
+
+Supported UI duty range is 30–100%. Only **100% → 75% → 100%** has so far been
+hardware-tested by glassknug on their Umbra hub. Lower settings and combined
+RGB/curve playback need hardware testing. The starting curve uses 75%, 85%,
+100%; do not assume a percentage is a measured speed or that every connected
+fan has the same response.
+
+Protocol evidence: static inspection of the user-provided AsiaHorse UMBRA
+3.5.5 installer identified the percentage-slider path sending command body
+`FB <percentage>` and the fan-control ownership switch sending `08 00/01`.
+`08 01` corresponds to motherboard-sync unchecked (software fan control).
+The above two-level test confirmed changes in motor speed with `08 01` and
+`FB 64` / `FB 4B`. No vendor executable or extracted proprietary code is
+redistributed with this project. RGB and fan duty commands share a
+single USB worker to avoid competing HID connections inside the app.
+
 ### Sensor readings
 
 Temperature and fan speed readings refresh every two seconds from Linux
@@ -115,9 +167,13 @@ These are system sensors, **not telemetry decoded from the Umbra hub**.
 Only sensors exposed by installed kernel drivers appear. A fan connected only
 to the hub may have no RPM reading. Missing or faulty readings show
 **Unavailable**, while an actual zero RPM reading is shown as zero.
-Sensor access is read-only: the app does not control fan speed or cooling policy.
+Sensor access is read-only. Fan duty control is separate, via USB in the Fan curves tab.
 
 ### Validation and troubleshooting
+
+The Fan curves tab is a new experimental integration. Automated tests cover
+curve interpolation, profiles, fallback behavior, USB packets and shared-worker
+operation. Its visual layout and combined playback need desktop hardware testing.
 
 glassknug reported all five effects working on an Umbra hub running Bazzite,
 and subsequently confirmed that the English GUI works well. Compatibility
@@ -165,8 +221,9 @@ payload, zero-padded.
 | `00`      | Status query (hub replies with a `52 42` frame)  |
 | `01 FF`   | Topology query (reply below)                     |
 | `FD 01`   | Enter software-controlled RGB mode (see quirks!) |
-| `08 00`   | Motherboard passthrough "on" (per the capture)   |
-| `08 01`   | Motherboard passthrough "off"                    |
+| `08 00`   | Motherboard fan-control sync on (3.5.5 UI path)  |
+| `08 01`   | Software fan control (3.5.5 UI path)             |
+| `FB nn`   | Hub-wide motor duty percentage, `nn` is 0–100    |
 
 **Topology reply:** ten 5-byte records starting at offset 6:
 `[led_count, ?, ?, port_index, ?]` for ports 0–9.
@@ -204,7 +261,7 @@ to `packet_count * 20` slots. `packet_count = ceil(total_leds / 20)`.
 
 ## Credits
 
-- **[glassknug](https://github.com/glassknug)** — desktop GUI, software effects,
+- **[glassknug](https://github.com/glassknug)** — desktop GUI, software effects, fan curves,
   system sensor integration, desktop launcher and Bazzite hardware testing.
 
 - **u/idk_a_name_wtf** (r/ASIAHORSEGlobal) — original Wireshark capture

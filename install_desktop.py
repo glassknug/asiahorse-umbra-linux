@@ -7,7 +7,7 @@ import shutil
 import sys
 
 APP_ID = "asiahorse-umbra"
-APP_FILES = ("asiahorse.py", "asiahorse_gui.py", "effects.py", "sensors.py", "LICENSE")
+APP_FILES = ("asiahorse.py", "asiahorse_gui.py", "effects.py", "sensors.py", "fan_curves.py", "fan_ui.py", "LICENSE")
 
 
 def desktop_quote(value):

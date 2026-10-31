@@ -17,8 +17,8 @@ def main():
 
     root = tk.Tk()
     root.title("AsiaHorse Umbra")
-    root.geometry("850x810")
-    root.minsize(680, 740)
+    root.geometry(f"940x{min(940, root.winfo_screenheight() - 90)}")
+    root.minsize(860, min(860, root.winfo_screenheight() - 110))
     root.configure(bg="#151923")
     style = ttk.Style(root)
     style.theme_use("clam")
@@ -49,6 +49,22 @@ def main():
 
     ttk.Button(header, text="About", command=about).pack(side="right")
     ttk.Label(frame, text="Lighting and system monitoring").pack(anchor="w", pady=(3, 20))
+    notebook = ttk.Notebook(frame)
+    notebook.pack(fill="both", expand=True, pady=(0, 6))
+    lighting = ttk.Frame(notebook, padding=12)
+    fan_container = ttk.Frame(notebook)
+    fan_canvas = tk.Canvas(fan_container, bg="#151923", highlightthickness=0)
+    fan_scroll = ttk.Scrollbar(fan_container, orient="vertical", command=fan_canvas.yview)
+    fan_canvas.configure(yscrollcommand=fan_scroll.set)
+    fan_scroll.pack(side="right", fill="y")
+    fan_canvas.pack(side="left", fill="both", expand=True)
+    fans = ttk.Frame(fan_canvas, padding=12)
+    fan_window = fan_canvas.create_window(0, 0, anchor="nw", window=fans)
+    fans.bind("<Configure>", lambda _: fan_canvas.configure(scrollregion=fan_canvas.bbox("all")))
+    fan_canvas.bind("<Configure>", lambda e: fan_canvas.itemconfigure(fan_window, width=e.width))
+    notebook.add(lighting, text="RGB & sensors")
+    notebook.add(fan_container, text="Fan curves")
+    frame = lighting
     ttk.Label(frame, text="Lighting · all connected RGB ports").pack(anchor="w")
     effect = tk.StringVar(value=EFFECTS[0])
     ttk.Label(frame, text="Effect").pack(anchor="w", pady=(10, 3))
@@ -120,6 +136,16 @@ def main():
             if player.thread.is_alive():
                 root.after(100, wait_for_worker)
             else:
+                errors = []
+                try:
+                    while True:
+                        event = player.events.get_nowait()
+                        if "Could not request 100%" in event:
+                            errors.append(event)
+                except queue.Empty:
+                    pass
+                if errors:
+                    messagebox.showerror("Check cooling", "\n".join(errors), parent=root)
                 root.destroy()
         wait_for_worker()
 
@@ -143,6 +169,8 @@ def main():
                           "No hwmon sensors found. Check your system sensor drivers.")
         root.after(2000, update_sensors)
 
+    from fan_ui import FanTab
+    fan_tab = FanTab(root, fans, player)
     refresh()
     update_sensors()
     root.mainloop()
