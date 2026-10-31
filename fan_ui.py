@@ -5,7 +5,7 @@ import tkinter as tk
 from tkinter import messagebox, ttk
 
 from fan_curves import load_profiles, save_profiles, sensor_id, validate_points, validate_profile
-from sensors import read_sensors
+from sensors import cpu_temperature, read_sensors
 
 
 class FanTab:
@@ -21,6 +21,8 @@ class FanTab:
         self.manual = tk.DoubleVar(value=100)
         self.state = tk.StringVar(value='Inactive · opening this tab does not change fan speed')
         self.current = tk.StringVar(value='Temperature: —    Requested fan duty: —')
+        self.cpu_value = tk.StringVar(value='— °C')
+        self.cpu_source = tk.StringVar(value='Detecting CPU sensor…')
         self.profile_choice = tk.StringVar()
         self.drag_index = None
         self.temp = None
@@ -47,6 +49,15 @@ class FanTab:
         self.sensor_box.grid(row=1, column=1, columnspan=3, sticky='ew', padx=6)
         ttk.Button(editor, text='Refresh sensors', command=self.refresh_sensors).grid(row=1, column=4, padx=5)
         editor.columnconfigure(1, weight=1)
+        cpu_card = tk.Frame(frame, bg='#202737', padx=16, pady=10)
+        cpu_card.pack(fill='x', pady=(8, 6))
+        tk.Label(cpu_card, text='CPU TEMPERATURE', bg='#202737', fg='#bbc5d7',
+                 font=('Sans', 10, 'bold')).pack(side='left', padx=(0, 20))
+        self.cpu_display = tk.Label(cpu_card, textvariable=self.cpu_value,
+                                    bg='#202737', fg='#71e6cf', font=('Sans', 30, 'bold'))
+        self.cpu_display.pack(side='left')
+        tk.Label(cpu_card, textvariable=self.cpu_source, bg='#202737', fg='#bbc5d7',
+                 justify='left', font=('Sans', 10)).pack(side='left', padx=20)
         ttk.Label(frame, text='Points: temperature °C : fan %. Drag points or edit below, then Apply curve.').pack(anchor='w', pady=(5, 0))
         self.chart = tk.Canvas(frame, height=195, bg='#202737', highlightthickness=0)
         self.chart.pack(fill='x', pady=4)
@@ -81,6 +92,18 @@ class FanTab:
         for key in range(1, 10):
             root.bind(f'<Control-Alt-KeyPress-{key}>', lambda _, key=str(key): self.activate_shortcut(key))
         self.poll()
+        self.refresh_cpu()
+
+    def refresh_cpu(self):
+        import math
+        sensor = cpu_temperature(read_sensors())
+        value = sensor.value if sensor else None
+        valid = value is not None and math.isfinite(value) and -20 <= value <= 130
+        self.cpu_value.set(f'{value:.1f} °C' if valid else '— °C')
+        source = f'{sensor.source} · {sensor.label}' if sensor else 'No recognized CPU sensor'
+        self.cpu_source.set(source + ('\nLive reading · updates every second' if valid else '\nCPU reading unavailable'))
+        self.cpu_display.configure(fg='#efb16b' if valid and value >= 85 else '#71e6cf' if valid else '#bbc5d7')
+        self.root.after(1000, self.refresh_cpu)
 
     def parse(self):
         return validate_points([tuple(map(float, item.strip().split(':'))) for item in self.points.get().split(',')])

@@ -35,3 +35,14 @@ def read_sensors(root: Path = Path("/sys/class/hwmon")) -> list[Sensor]:
                     value = None
                 sensors.append(Sensor(str(path), source, label, kind, value))
     return sensors
+
+
+def cpu_temperature(sensors):
+    """Prefer the CPU control/package reading; never substitute a GPU sensor."""
+    for source, label in (("k10temp", "Tctl"), ("k10temp", "Tdie"),
+                          ("coretemp", "Package id 0"), ("coretemp", "Package")):
+        matches = [s for s in sensors if s.kind == "temperature" and
+                   s.source == source and s.label == label]
+        if len(matches) == 1:
+            return matches[0]
+    return None

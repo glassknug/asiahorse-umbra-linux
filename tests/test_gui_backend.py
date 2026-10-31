@@ -2,7 +2,7 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from sensors import read_sensors
+from sensors import Sensor, cpu_temperature, read_sensors
 
 
 class SensorsTest(unittest.TestCase):
@@ -24,6 +24,19 @@ class SensorsTest(unittest.TestCase):
 
     def test_missing_root(self):
         self.assertEqual(read_sensors(Path("/nonexistent/hwmon")), [])
+
+
+class CpuDisplayTests(unittest.TestCase):
+    def test_cpu_is_not_confused_with_gpu(self):
+        gpu = Sensor('gpu', 'amdgpu', 'edge', 'temperature', 60)
+        cpu = Sensor('cpu', 'k10temp', 'Tctl', 'temperature', 46.9)
+        self.assertIs(cpu_temperature([gpu, cpu]), cpu)
+        self.assertIsNone(cpu_temperature([gpu]))
+
+    def test_faulty_cpu_is_not_replaced_by_other_temperature(self):
+        cpu = Sensor('cpu', 'k10temp', 'Tctl', 'temperature', None)
+        other = Sensor('ccd', 'k10temp', 'Tccd1', 'temperature', 35)
+        self.assertIs(cpu_temperature([other, cpu]), cpu)
 
 
 if __name__ == "__main__":

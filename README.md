@@ -108,7 +108,11 @@ No boot effects or firmware presets are modified.
 
 ### Fan curves (experimental)
 
-The **Fan curves** tab adds USB motor duty control alongside RGB. Opening the
+The **Fan curves** tab adds USB motor duty control alongside RGB. A large CPU
+temperature display above the curve updates every second, even before fan
+control is activated. It shows the CPU sensor source and displays unavailable
+readings explicitly, without substituting a GPU sensor. The selected curve
+sensor is independent: check that selection before applying a profile. Opening the
 app or loading a profile does not change fan duty; press **Apply curve** or
 **Apply manual** to take control. This sends a hub-wide duty request, not an
 individual setting per port. No motherboard PWM registers are written.
