@@ -1,3 +1,7 @@
+> **Desktop application development has moved**
+>
+> Development of my desktop application continues in **[Umbra Control for Linux](https://github.com/glassknug/umbra-control-linux)**. This fork is retained as an archive of my earlier contributions. Umbra Control builds on the original Linux driver by **ToeTagger / LuxDev372**, with original credits and license notices preserved.
+
 # AsiaHorse Umbra ARGB Hub — Linux Control
 
 Native Linux control for the **AsiaHorse Umbra ARGB hub** (USB `1a86:fe05`,
